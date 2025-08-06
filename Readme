@@ -1,0 +1,65 @@
+# Waryon – The Watchful Guardian
+
+**AI That Watches, Listens, and Acts. Fully On-Premises for Maximum Privacy and Real-Time Protection.**  
+**Powered by Gemma 3n**
+
+---
+
+## 🛡️ About Waryon
+
+**Waryon** is a privacy-first, real-time AI safety companion built to detect violence, distress, or abuse through **audio and visual cues** — and act immediately.
+
+Designed especially for vulnerable individuals (women, elders, children, or anyone at risk), Waryon simulates intelligent **on-premises alerting** without requiring an internet connection, cloud APIs, or external dependencies.
+
+---
+
+## 🎯 Key Features
+
+- **👁️ Video Surveillance with Violence Detection**  
+  Processes video input to detect violent behavior or threats using fine-tuned models.
+
+- **🎤 Audio-Based Distress Detection**  
+  Listens for screams, shouting, or distress tones even if video feed is blocked.
+
+- **⚡ Immediate Alerts**  
+  Once a threat is detected, Waryon raises a local alert or performs a custom action (e.g., log, sound, light, SMS trigger if extended).
+
+- **🔐 Fully On-Premises**  
+  No internet, no cloud dependency — all processing is done locally using **Gemma 3n** LLMs and lightweight perception models.
+
+- **🧠 Smart Fusion**  
+  Combines sound and vision for more accurate decisions — reducing false positives.
+
+---
+
+## 🚨 Why Waryon?
+
+> “Because safety shouldn’t come at the cost of privacy.”
+
+In many environments, surveillance and safety tools either:
+- invade personal privacy via cloud uploads,
+- fail to act in real-time, or
+- are biased toward specific users or genders.
+
+Waryon ensures that **any person under threat — regardless of gender, age, or context —** receives fast, unbiased, offline protection.
+
+---
+
+## 🏁 Getting Started
+
+> Make sure you’ve already set up Python and Git.
+
+```bash
+# Clone the repository
+git clone https://github.com/Hyndavistfu/Waryon.git
+cd Waryon
+
+# (Optional) Create and activate virtual environment
+python -m venv waryon_env
+.\waryon_env\Scripts\activate   # Windows
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run Waryon
+python app.py
