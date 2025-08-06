@@ -1,65 +1,62 @@
-# Waryon – The Watchful Guardian
+Waryon – The Watchful Guardian
+AI That Watches, Listens, and Acts. Fully On-Premises for Maximum Privacy and Real-Time Protection.
 
-**AI That Watches, Listens, and Acts. Fully On-Premises for Maximum Privacy and Real-Time Protection.**  
-**Powered by Gemma 3n**
+🔍 Overview
+Waryon is an AI-powered personal safety system designed to provide proactive, intelligent protection in real-time. Built for vulnerable individuals such as women, the elderly, and those in high-risk situations, Waryon listens for distress cues and visually analyzes surroundings to detect threats—responding instantly with alerts, deterrents, and guidance.
 
----
+Unlike traditional safety tools, Waryon runs fully on-device, ensuring maximum privacy, low latency, and uninterrupted protection, even without internet connectivity.
 
-## 🛡️ About Waryon
+🚨 Key Features
+Real-Time Threat Detection
+Monitors both audio and visual input to detect signs of distress, physical danger, or unusual activity.
 
-**Waryon** is a privacy-first, real-time AI safety companion built to detect violence, distress, or abuse through **audio and visual cues** — and act immediately.
+Instant Autonomous Response
+Triggers alarms, records evidence, and sends alerts when suspicious or harmful behavior is detected.
 
-Designed especially for vulnerable individuals (women, elders, children, or anyone at risk), Waryon simulates intelligent **on-premises alerting** without requiring an internet connection, cloud APIs, or external dependencies.
+Multi-Modal Sensing
+Uses combined visual and auditory cues for intelligent scene understanding and risk assessment.
 
----
+Offline & Private
+Designed for full offline operation. No data is sent to the cloud—your safety stays with you.
 
-## 🎯 Key Features
+Accessible for All
+Designed with accessibility in mind to assist a broad range of users in vulnerable contexts.
 
-- **👁️ Video Surveillance with Violence Detection**  
-  Processes video input to detect violent behavior or threats using fine-tuned models.
+💡 Why Waryon?
+Every day, millions face risks in public and private spaces—with no timely way to ask for help. Waryon aims to fill this gap by:
 
-- **🎤 Audio-Based Distress Detection**  
-  Listens for screams, shouting, or distress tones even if video feed is blocked.
+Providing always-on situational awareness
 
-- **⚡ Immediate Alerts**  
-  Once a threat is detected, Waryon raises a local alert or performs a custom action (e.g., log, sound, light, SMS trigger if extended).
+Offering hands-free, autonomous intervention
 
-- **🔐 Fully On-Premises**  
-  No internet, no cloud dependency — all processing is done locally using **Gemma 3n** LLMs and lightweight perception models.
+Respecting user privacy and dignity
 
-- **🧠 Smart Fusion**  
-  Combines sound and vision for more accurate decisions — reducing false positives.
+This project was created for the Gemma 3n Impact Challenge to demonstrate how advanced AI can empower and protect in critical real-world scenarios.
 
----
+🛠️ Getting Started
+To run Waryon locally:
 
-## 🚨 Why Waryon?
+Clone the repository:
 
-> “Because safety shouldn’t come at the cost of privacy.”
-
-In many environments, surveillance and safety tools either:
-- invade personal privacy via cloud uploads,
-- fail to act in real-time, or
-- are biased toward specific users or genders.
-
-Waryon ensures that **any person under threat — regardless of gender, age, or context —** receives fast, unbiased, offline protection.
-
----
-
-## 🏁 Getting Started
-
-> Make sure you’ve already set up Python and Git.
-
-```bash
-# Clone the repository
+bash
+Copy
+Edit
 git clone https://github.com/Hyndavistfu/Waryon.git
 cd Waryon
+(Instructions for setting up environment, installing dependencies, running app, etc. will go here once the stack is finalized.)
 
-# (Optional) Create and activate virtual environment
-python -m venv waryon_env
-.\waryon_env\Scripts\activate   # Windows
+🎯 Use Cases
+Personal Safety for Women and Elders
 
-# Install dependencies
-pip install -r requirements.txt
+Home Security
 
-# Run Waryon
-python app.py
+On-Street Surveillance for High-Risk Zones
+
+Night Shift Workers and Travelers
+
+
+🔒 Privacy First
+Waryon is committed to user safety without sacrificing privacy. No data leaves the device. No recording unless an alert is triggered. No compromises.
+
+🧠 Powered by Gemma 3n
+Waryon is built on the multimodal capabilities of Gemma 3n, combining powerful vision and language reasoning in a compact, efficient AI engine suitable for on-device inference.
