@@ -1,0 +1,61 @@
+{
+  "competition_info": {
+    "app_name": "WARYON AI Guardian",
+    "version": "1.0",
+    "technology": "Gemma 3n Dynamic Scaling",
+    "created": "2025-08-06T18:33:06.001840"
+  },
+  "user": {
+    "name": "Competition Demo",
+    "email": "demo@waryon.ai",
+    "phone": "",
+    "age_group": "Adult (18-65)"
+  },
+  "emergency_contacts": [
+    {
+      "name": "Emergency Services",
+      "email": "emergency@example.com",
+      "phone": "911",
+      "relationship": "Emergency Service",
+      "priority": "High"
+    }
+  ],
+  "detection_settings": {
+    "violence_sensitivity": 0.7,
+    "fall_sensitivity": 0.8,
+    "audio_sensitivity": 0.6,
+    "expression_sensitivity": 0.75,
+    "custom_gestures": []
+  },
+  "alert_settings": {
+    "email_enabled": true,
+    "sound_enabled": true,
+    "notification_enabled": true,
+    "desktop_alerts": true,
+    "emergency_timeout": 30
+  },
+  "ai_settings": {
+    "model": "gemma3n:e4b",
+    "default_performance": "auto",
+    "auto_scaling": true,
+    "max_tokens": 500,
+    "temperature": 0.1,
+    "confidence_threshold": 0.6
+  },
+  "system_settings": {
+    "video_fps": 30,
+    "analysis_interval": 2.0,
+    "audio_sample_rate": 44100,
+    "enable_system_tray": true,
+    "save_evidence": true,
+    "max_evidence_files": 100
+  },
+  "competition_settings": {
+    "demo_mode": true,
+    "performance_tracking": true,
+    "detailed_logging": true,
+    "export_statistics": true,
+    "live_metrics": true
+  },
+  "setup_completed": true
+}
