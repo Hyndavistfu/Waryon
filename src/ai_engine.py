@@ -1,7 +1,6 @@
 """
-WARYON Dynamic AI Engine
-Gemma 3n Competition-Ready Multimodal Threat Detection
-Uses Single Model with Dynamic Performance Scaling
+WARYON Enhanced AI Engine with TRUE Gemma 3n Mix'n'Match
+Real multiple model implementation for competition
 """
 
 import requests
@@ -15,111 +14,100 @@ import numpy as np
 import cv2
 import threading
 
-PerformanceLevel = Literal["2b_efficient", "4b_full", "3b_balanced", "auto"]
+PerformanceLevel = Literal["2b_efficient", "4b_full", "3b_balanced", "auto", "mixnmatch"]
 
-class GemmaDynamicAI:
+class GemmaMixNMatchAI:
     def __init__(self, config_manager):
         self.config = config_manager
         self.ollama_url = "http://localhost:11434"
         
-        # Single model with dynamic performance
-        self.model = "gemma3n:e4b"
-        
-        # Performance monitoring
-        self.performance_stats = {
-            "total_analyses": 0,
-            "2b_efficient_count": 0,
-            "4b_full_count": 0,
-            "3b_balanced_count": 0,
-            "threats_detected": 0,
-            "false_positives": 0,
-            "avg_response_time": 0.0,
-            "resource_usage": []
+        # TRUE Mix'n'Match - Multiple Gemma models
+        self.models = {
+            "quick_audio": "gemma3n:2b",      # Fast audio-only analysis
+            "multimodal_full": "gemma3n:e4b", # Full multimodal analysis
+            "text_analysis": "gemma3n:2b",    # Quick text processing
+            "primary": "gemma3n:e4b"          # Main model
         }
         
-        # Dynamic performance thresholds
-        self.performance_thresholds = {
-            "complex_scene_threshold": 0.6,
-            "audio_urgency_threshold": 0.7,
-            "system_load_threshold": 0.8,
-            "battery_low_threshold": 0.3
+        # Performance monitoring for each model
+        self.model_stats = {
+            "gemma3n:2b": {"uses": 0, "avg_time": 0.0, "total_time": 0.0},
+            "gemma3n:e4b": {"uses": 0, "avg_time": 0.0, "total_time": 0.0}
         }
         
-        # Threat detection prompts optimized for multimodal analysis
-        self.prompts = self._initialize_prompts()
+        # Mix'n'Match decision thresholds
+        self.mixnmatch_thresholds = {
+            "audio_urgency_for_quick": 0.8,      # Use quick 2B for urgent audio
+            "escalation_confidence": 0.7,        # Escalate to 4B if confidence low
+            "complex_scene_threshold": 0.6       # Use 4B for complex scenes
+        }
         
-        # Test connection and capabilities
-        self.connection_status = self.test_connection()
+        # Enhanced threat detection prompts for different models
+        self.prompts = self._initialize_mixnmatch_prompts()
         
-        print(f"🤖 Gemma 3n Dynamic AI Engine initialized")
-        print(f"   Model: {self.model}")
-        print(f"   Connection: {'✅ Ready' if self.connection_status else '❌ Failed'}")
+        # Test all model connections
+        self.connection_status = self.test_all_models()
+        
+        print(f"🤖 Gemma 3n Mix'n'Match AI Engine initialized")
+        print(f"   Models Available: {list(self.models.keys())}")
+        print(f"   Connection Status: {'✅ All Ready' if self.connection_status else '❌ Some Failed'}")
     
-    def _initialize_prompts(self) -> Dict[str, str]:
-        """Initialize multimodal threat detection prompts"""
+    def _initialize_mixnmatch_prompts(self) -> Dict[str, str]:
+        """Initialize specialized prompts for different models"""
         return {
-            'multimodal_threat': """You are WARYON, an advanced AI safety system using Gemma 3n's multimodal capabilities.
+            'quick_audio_screening': """You are WARYON's rapid audio threat detector using Gemma 3n 2B.
 
-Analyze the provided image AND audio context for safety threats. Look for:
+Analyze this audio description for IMMEDIATE threats requiring escalation:
 
-VISUAL THREATS:
-- Violence: hitting, restraining, threatening gestures, weapons
-- Medical emergencies: falls, collapse, distress expressions
-- Bullying: intimidation, aggressive confrontation, fear responses
-- Expressions: fear, panic, distress, pain in faces
+AUDIO: {audio_description}
 
-AUDIO THREATS:
-- Distress calls: screaming, crying, calls for help
-- Threatening language: verbal abuse, threats, aggressive shouting
-- Emergency sounds: crashes, breaking, unusual silence
+Look for URGENT keywords: help, emergency, fire, police, attack, hurt, stop, don't, scared
 
-CONTEXT AWARENESS:
-- Distinguish entertainment (TV, games) from real threats
-- Consider normal activities vs emergency situations
-- Analyze facial expressions and body language carefully
-- Evaluate audio-visual correlation for accuracy
-
-Respond EXACTLY in this format:
-THREAT: [YES/NO]
+Respond in this EXACT format:
+URGENT: [YES/NO]
 CONFIDENCE: [0.0-1.0]
-TYPE: [Violence/Fall/Bullying/Distress/Normal Activity]
-VISUAL_ANALYSIS: [What you see in the image]
-AUDIO_ANALYSIS: [What you detect in audio]
-REASONING: [Why this is/isn't a threat]
-URGENCY: [Low/Medium/High]""",
+KEYWORDS: [List any urgent words found]
+ESCALATE: [YES/NO - should this go to full multimodal analysis?]""",
 
-            'expression_analysis': """You are WARYON analyzing facial expressions for safety assessment.
+            'multimodal_full_analysis': """You are WARYON's comprehensive threat analyzer using Gemma 3n 4B multimodal.
 
-Focus specifically on:
-- Facial expressions indicating fear, panic, distress, pain
-- Eye movements and gaze patterns
-- Mouth position (screaming, crying, shock)
-- Overall body language and posture
-- Signs of physical or emotional distress
+This case was escalated from quick screening. Perform COMPLETE analysis:
+
+VISUAL CONTEXT: {visual_analysis}
+AUDIO CONTEXT: {audio_analysis}
+PREVIOUS SCREENING: {screening_result}
+
+Analyze BOTH visual and audio for:
+- Violence, medical emergencies, distress
+- Context correlation between visual and audio
+- Threat confirmation or false positive identification
 
 THREAT: [YES/NO]
 CONFIDENCE: [0.0-1.0]
-EXPRESSION: [Specific expression detected]
-EMOTION: [Fear/Panic/Distress/Pain/Neutral]
-REASONING: [Detailed expression analysis]""",
+TYPE: [Violence/Emergency Call/Medical/Distress/False Positive]
+MULTIMODAL_CORRELATION: [How visual and audio relate]
+REASONING: [Detailed multimodal analysis]
+URGENCY: [Low/Medium/High/Critical]""",
 
-            'scene_context': """Analyze the overall scene context for threat assessment:
+            'fallback_analysis': """You are WARYON using standard Gemma 3n analysis.
 
-- Environment type (home, office, public, etc.)
-- Number of people and their relationships
-- Activities being performed
-- Objects and potential weapons present
-- Lighting and visibility conditions
-- Any signs of struggle or disturbance
+VISUAL_CONTEXT: {visual_analysis}
+AUDIO_CONTEXT: {audio_analysis}
 
-CONTEXT: [Scene description]
-THREAT_INDICATORS: [List any concerning elements]
-SAFETY_ASSESSMENT: [Overall safety evaluation]"""
+Standard threat detection analysis:
+
+THREAT: [YES/NO]
+CONFIDENCE: [0.0-1.0]
+TYPE: [Violence/Fall/Normal Activity]
+REASONING: [Analysis explanation]
+URGENCY: [Low/Medium/High]"""
         }
     
-    def test_connection(self) -> bool:
-        """Test connection to Gemma 3n model"""
+    def test_all_models(self) -> bool:
+        """Test connection to all Gemma models"""
         try:
+            print("🧪 Testing all Gemma 3n models...")
+            
             response = requests.get(f"{self.ollama_url}/api/tags", timeout=5)
             if response.status_code != 200:
                 return False
@@ -127,81 +115,456 @@ SAFETY_ASSESSMENT: [Overall safety evaluation]"""
             models = response.json().get('models', [])
             model_names = [m['name'] for m in models]
             
-            if self.model not in model_names:
-                print(f"❌ Model {self.model} not found")
-                return False
+            available_models = []
+            missing_models = []
             
-            # Test basic query
-            test_response = self._query_model("Test connection. Respond with 'WARYON AI READY'", "2b_efficient")
-            return test_response and "ready" in test_response.lower()
+            for purpose, model_name in self.models.items():
+                if model_name in model_names:
+                    available_models.append(f"{purpose}: {model_name}")
+                else:
+                    missing_models.append(f"{purpose}: {model_name}")
+            
+            print(f"✅ Available Models:")
+            for model in available_models:
+                print(f"   {model}")
+            
+            if missing_models:
+                print(f"❌ Missing Models:")
+                for model in missing_models:
+                    print(f"   {model}")
+                print("   Download with: ollama pull gemma3n:2b")
+            
+            # Test basic queries on available models
+            for model_name in set(self.models.values()):
+                if model_name in model_names:
+                    test_response = self._test_model_query(model_name)
+                    if not test_response:
+                        print(f"❌ Model {model_name} failed test query")
+                        return False
+            
+            return len(missing_models) == 0
             
         except Exception as e:
-            print(f"❌ Connection test failed: {e}")
+            print(f"❌ Model connection test failed: {e}")
             return False
     
-    def analyze_multimodal_threat(self, image, audio_description: str = "", performance_level: PerformanceLevel = "auto") -> Dict[str, Any]:
-        """Analyze both visual and audio data for threats using dynamic performance"""
+    def _test_model_query(self, model_name: str) -> bool:
+        """Test individual model with simple query"""
+        try:
+            query_data = {
+                'model': model_name,
+                'prompt': 'Test query. Respond with: WARYON READY',
+                'stream': False,
+                'options': {'num_predict': 10}
+            }
+            
+            response = requests.post(
+                f"{self.ollama_url}/api/generate",
+                json=query_data,
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                response_text = result.get('response', '').strip()
+                return 'ready' in response_text.lower() or 'waryon' in response_text.lower()
+            
+            return False
+            
+        except Exception as e:
+            print(f"❌ Model test error for {model_name}: {e}")
+            return False
+    
+    def analyze_multimodal_threat(self, image, audio_description: str = "", performance_level: PerformanceLevel = "mixnmatch") -> Dict[str, Any]:
+        """Enhanced Mix'n'Match multimodal threat analysis"""
         start_time = time.time()
         
         try:
-            # Auto-select performance level if needed
-            if performance_level == "auto":
-                performance_level = self._auto_select_performance(image, audio_description)
+            if performance_level == "mixnmatch":
+                return self._mixnmatch_analysis(image, audio_description, start_time)
+            else:
+                # Fallback to single model analysis
+                return self._single_model_analysis(image, audio_description, performance_level, start_time)
+                
+        except Exception as e:
+            print(f"❌ Mix'n'Match analysis error: {e}")
+            return self._create_error_response(f"Mix'n'Match analysis error: {e}")
+    
+    def _mixnmatch_analysis(self, image, audio_description: str, start_time: float) -> Dict[str, Any]:
+        """TRUE Mix'n'Match analysis using multiple Gemma models"""
+        print(f"🔀 Starting Mix'n'Match analysis...")
+        
+        analysis_steps = []
+        
+        # STEP 1: Quick Audio Screening with 2B model
+        audio_screening = None
+        if audio_description:
+            print(f"🎤 Step 1: Quick audio screening with Gemma 2B...")
+            audio_screening = self._quick_audio_screening(audio_description)
+            analysis_steps.append(f"Audio screening: {audio_screening.get('escalate', False)}")
             
-            # Update statistics
-            self.performance_stats["total_analyses"] += 1
-            self.performance_stats[f"{performance_level}_count"] += 1
+            # If urgent audio detected, escalate immediately
+            if audio_screening.get('escalate', False):
+                print(f"⚡ URGENT AUDIO DETECTED - Escalating to full multimodal analysis!")
+                return self._full_multimodal_analysis(image, audio_description, audio_screening, start_time)
+        
+        # STEP 2: Scene Complexity Assessment
+        print(f"🔍 Step 2: Assessing scene complexity...")
+        scene_complexity = self._assess_scene_complexity(image)
+        analysis_steps.append(f"Scene complexity: {scene_complexity:.2f}")
+        
+        # STEP 3: Model Selection Based on Complexity
+        if scene_complexity > self.mixnmatch_thresholds["complex_scene_threshold"]:
+            print(f"🧠 Complex scene detected - Using Gemma 4B for full analysis...")
+            return self._full_multimodal_analysis(image, audio_description, audio_screening, start_time)
+        else:
+            print(f"📊 Normal scene - Using efficient analysis...")
+            return self._efficient_analysis(image, audio_description, audio_screening, start_time)
+    
+    def _quick_audio_screening(self, audio_description: str) -> Dict[str, Any]:
+        """Quick audio screening using Gemma 2B"""
+        screening_start = time.time()
+        
+        try:
+            # Use quick audio model
+            prompt = self.prompts['quick_audio_screening'].format(audio_description=audio_description)
             
-            print(f"🔍 Multimodal analysis using {performance_level} performance")
+            response = self._query_specific_model(
+                prompt=prompt,
+                model_name=self.models['quick_audio'],
+                max_tokens=100
+            )
             
-            # Prepare multimodal prompt
-            visual_analysis = self._analyze_visual_content(image, performance_level)
-            audio_analysis = self._analyze_audio_content(audio_description, performance_level)
+            screening_time = time.time() - screening_start
+            self._update_model_stats(self.models['quick_audio'], screening_time)
             
-            # Combine analyses
-            combined_prompt = self._create_multimodal_prompt(visual_analysis, audio_analysis, audio_description)
+            # Parse screening result
+            result = self._parse_screening_response(response)
+            result['screening_time'] = screening_time
+            result['model_used'] = self.models['quick_audio']
             
-            # Send to Gemma 3n with appropriate performance settings
-            ai_response = self._query_model_with_image(combined_prompt, image, performance_level)
-            
-            # Process response
-            result = self._parse_threat_response(ai_response, performance_level)
-            
-            # Update performance metrics
-            response_time = time.time() - start_time
-            self._update_performance_metrics(response_time, result)
+            print(f"🎤 Audio screening complete: {screening_time:.2f}s - Escalate: {result.get('escalate', False)}")
             
             return result
             
         except Exception as e:
-            print(f"❌ Multimodal analysis error: {e}")
-            return self._create_error_response(f"Analysis error: {e}")
+            print(f"❌ Quick audio screening error: {e}")
+            return {'escalate': False, 'error': str(e)}
     
-    def _auto_select_performance(self, image, audio_description: str) -> PerformanceLevel:
-        """Automatically select optimal performance level based on situation"""
+    def _full_multimodal_analysis(self, image, audio_description: str, screening_result: Optional[Dict], start_time: float) -> Dict[str, Any]:
+        """Full multimodal analysis using Gemma 4B"""
+        multimodal_start = time.time()
         
-        # Analyze scene complexity
-        scene_complexity = self._assess_scene_complexity(image)
-        audio_urgency = self._assess_audio_urgency(audio_description)
-        system_resources = self._check_system_resources()
-        
-        print(f"📊 Auto-selection: Scene={scene_complexity:.2f}, Audio={audio_urgency:.2f}, Resources={system_resources:.2f}")
-        
-        # Decision logic for dynamic performance
-        if audio_urgency > self.performance_thresholds["audio_urgency_threshold"] or \
-           scene_complexity > self.performance_thresholds["complex_scene_threshold"]:
-            return "4b_full"  # Maximum accuracy for critical situations
-            
-        elif system_resources > self.performance_thresholds["system_load_threshold"]:
-            return "2b_efficient"  # Preserve resources when system is loaded
-            
-        else:
-            return "3b_balanced"  # Balanced performance for normal situations
-    
-    def _assess_scene_complexity(self, image) -> float:
-        """Assess visual scene complexity for performance selection"""
         try:
-            # Simple complexity metrics
+            print(f"🧠 Full multimodal analysis with Gemma 4B...")
+            
+            # Prepare comprehensive visual analysis
+            visual_analysis = self._analyze_visual_content(image)
+            audio_analysis = self._analyze_audio_content(audio_description)
+            
+            # Create enhanced multimodal prompt
+            prompt = self.prompts['multimodal_full_analysis'].format(
+                visual_analysis=visual_analysis,
+                audio_analysis=audio_analysis,
+                screening_result=screening_result or "No prior screening"
+            )
+            
+            # Query full multimodal model
+            response = self._query_model_with_image(
+                prompt=prompt,
+                image=image,
+                model_name=self.models['multimodal_full'],
+                max_tokens=500
+            )
+            
+            multimodal_time = time.time() - multimodal_start
+            total_time = time.time() - start_time
+            
+            self._update_model_stats(self.models['multimodal_full'], multimodal_time)
+            
+            # Parse comprehensive result
+            result = self._parse_multimodal_response(response)
+            result.update({
+                'mixnmatch_analysis': True,
+                'screening_result': screening_result,
+                'multimodal_time': multimodal_time,
+                'total_analysis_time': total_time,
+                'models_used': [
+                    self.models['quick_audio'] if screening_result else None,
+                    self.models['multimodal_full']
+                ],
+                'analysis_path': 'quick_screening -> full_multimodal' if screening_result else 'direct_multimodal'
+            })
+            
+            print(f"🧠 Full analysis complete: {multimodal_time:.2f}s")
+            
+            return result
+            
+        except Exception as e:
+            print(f"❌ Full multimodal analysis error: {e}")
+            return self._create_error_response(f"Full multimodal analysis error: {e}")
+    
+    def _efficient_analysis(self, image, audio_description: str, screening_result: Optional[Dict], start_time: float) -> Dict[str, Any]:
+        """Efficient analysis for normal scenes"""
+        efficient_start = time.time()
+        
+        try:
+            print(f"📊 Efficient analysis for normal scene...")
+            
+            # Use primary model with efficient settings
+            visual_analysis = self._analyze_visual_content(image)
+            audio_analysis = self._analyze_audio_content(audio_description)
+            
+            prompt = self.prompts['fallback_analysis'].format(
+                visual_analysis=visual_analysis,
+                audio_analysis=audio_analysis
+            )
+            
+            response = self._query_model_with_image(
+                prompt=prompt,
+                image=image,
+                model_name=self.models['primary'],
+                max_tokens=300
+            )
+            
+            efficient_time = time.time() - efficient_start
+            total_time = time.time() - start_time
+            
+            self._update_model_stats(self.models['primary'], efficient_time)
+            
+            result = self._parse_threat_response(response)
+            result.update({
+                'mixnmatch_analysis': True,
+                'screening_result': screening_result,
+                'efficient_time': efficient_time,
+                'total_analysis_time': total_time,
+                'models_used': [self.models['primary']],
+                'analysis_path': 'efficient_normal_scene'
+            })
+            
+            print(f"📊 Efficient analysis complete: {efficient_time:.2f}s")
+            
+            return result
+            
+        except Exception as e:
+            print(f"❌ Efficient analysis error: {e}")
+            return self._create_error_response(f"Efficient analysis error: {e}")
+    
+    def _single_model_analysis(self, image, audio_description: str, performance_level: PerformanceLevel, start_time: float) -> Dict[str, Any]:
+        """Fallback single model analysis"""
+        try:
+            # Use primary model with specified performance settings
+            visual_analysis = self._analyze_visual_content(image)
+            audio_analysis = self._analyze_audio_content(audio_description)
+            
+            combined_prompt = self._create_multimodal_prompt(visual_analysis, audio_analysis, audio_description)
+            
+            response = self._query_model_with_image(
+                prompt=combined_prompt,
+                image=image,
+                model_name=self.models['primary'],
+                performance_level=performance_level
+            )
+            
+            analysis_time = time.time() - start_time
+            
+            result = self._parse_threat_response(response)
+            result.update({
+                'mixnmatch_analysis': False,
+                'analysis_time': analysis_time,
+                'model_used': self.models['primary'],
+                'performance_level': performance_level
+            })
+            
+            return result
+            
+        except Exception as e:
+            return self._create_error_response(f"Single model analysis error: {e}")
+    
+    def _query_specific_model(self, prompt: str, model_name: str, max_tokens: int = 200) -> Optional[str]:
+        """Query a specific Gemma model"""
+        try:
+            query_data = {
+                'model': model_name,
+                'prompt': prompt,
+                'stream': False,
+                'options': {
+                    'num_predict': max_tokens,
+                    'temperature': 0.1,
+                    'top_p': 0.9
+                }
+            }
+            
+            response = requests.post(
+                f"{self.ollama_url}/api/generate",
+                json=query_data,
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                return result.get('response', '').strip()
+            
+            return None
+            
+        except Exception as e:
+            print(f"❌ Specific model query error for {model_name}: {e}")
+            return None
+    
+    def _query_model_with_image(self, prompt: str, image, model_name: str, performance_level: str = None, max_tokens: int = 500) -> Optional[str]:
+        """Query Gemma model with image"""
+        try:
+            # Convert image to base64
+            image_b64 = self._image_to_base64(image)
+            
+            # Get performance settings
+            if performance_level:
+                options = self._get_performance_settings(performance_level)
+            else:
+                options = {
+                    'num_predict': max_tokens,
+                    'temperature': 0.1,
+                    'top_p': 0.95
+                }
+            
+            query_data = {
+                'model': model_name,
+                'prompt': prompt,
+                'images': [image_b64],
+                'stream': False,
+                'options': options
+            }
+            
+            response = requests.post(
+                f"{self.ollama_url}/api/generate",
+                json=query_data,
+                timeout=60
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                return result.get('response', '').strip()
+            
+            return None
+            
+        except Exception as e:
+            print(f"❌ Model with image query error for {model_name}: {e}")
+            return None
+    
+    def _update_model_stats(self, model_name: str, execution_time: float):
+        """Update performance statistics for each model"""
+        if model_name in self.model_stats:
+            stats = self.model_stats[model_name]
+            stats['uses'] += 1
+            stats['total_time'] += execution_time
+            stats['avg_time'] = stats['total_time'] / stats['uses']
+    
+    def _parse_screening_response(self, response: str) -> Dict[str, Any]:
+        """Parse quick audio screening response"""
+        result = {
+            'urgent': False,
+            'confidence': 0.0,
+            'keywords': [],
+            'escalate': False
+        }
+        
+        if not response:
+            return result
+        
+        lines = response.split('\n')
+        for line in lines:
+            line = line.strip()
+            
+            if line.startswith('URGENT:'):
+                urgent_value = line.split(':', 1)[1].strip().upper()
+                result['urgent'] = urgent_value == 'YES'
+            
+            elif line.startswith('CONFIDENCE:'):
+                try:
+                    confidence_str = line.split(':', 1)[1].strip()
+                    result['confidence'] = float(confidence_str)
+                except ValueError:
+                    result['confidence'] = 0.5
+            
+            elif line.startswith('KEYWORDS:'):
+                keywords_str = line.split(':', 1)[1].strip()
+                result['keywords'] = [k.strip() for k in keywords_str.split(',') if k.strip()]
+            
+            elif line.startswith('ESCALATE:'):
+                escalate_value = line.split(':', 1)[1].strip().upper()
+                result['escalate'] = escalate_value == 'YES'
+        
+        return result
+    
+    def _parse_multimodal_response(self, response: str) -> Dict[str, Any]:
+        """Parse full multimodal analysis response"""
+        result = {
+            'threat_detected': False,
+            'confidence': 0.0,
+            'threat_type': 'Unknown',
+            'multimodal_correlation': 'No correlation analysis',
+            'reasoning': 'No reasoning provided',
+            'urgency': 'Low'
+        }
+        
+        if not response:
+            return result
+        
+        lines = response.split('\n')
+        for line in lines:
+            line = line.strip()
+            
+            if line.startswith('THREAT:'):
+                threat_value = line.split(':', 1)[1].strip().upper()
+                result['threat_detected'] = threat_value == 'YES'
+            
+            elif line.startswith('CONFIDENCE:'):
+                try:
+                    confidence_str = line.split(':', 1)[1].strip()
+                    result['confidence'] = float(confidence_str)
+                except ValueError:
+                    result['confidence'] = 0.5
+            
+            elif line.startswith('TYPE:'):
+                result['threat_type'] = line.split(':', 1)[1].strip()
+            
+            elif line.startswith('MULTIMODAL_CORRELATION:'):
+                result['multimodal_correlation'] = line.split(':', 1)[1].strip()
+            
+            elif line.startswith('REASONING:'):
+                result['reasoning'] = line.split(':', 1)[1].strip()
+            
+            elif line.startswith('URGENCY:'):
+                result['urgency'] = line.split(':', 1)[1].strip()
+        
+        return result
+    
+    def get_mixnmatch_stats(self) -> Dict[str, Any]:
+        """Get comprehensive Mix'n'Match statistics"""
+        stats = {
+            'models_available': list(self.models.keys()),
+            'model_performance': self.model_stats.copy(),
+            'mixnmatch_enabled': True,
+            'total_analyses': sum(s['uses'] for s in self.model_stats.values())
+        }
+        
+        # Calculate efficiency metrics
+        if stats['total_analyses'] > 0:
+            total_time = sum(s['total_time'] for s in self.model_stats.values())
+            stats['average_analysis_time'] = total_time / stats['total_analyses']
+            
+            # Model usage distribution
+            stats['model_usage_distribution'] = {
+                model: (stats_data['uses'] / stats['total_analyses']) * 100
+                for model, stats_data in self.model_stats.items()
+            }
+        
+        return stats
+    
+    # Include all other methods from original ai_engine.py
+    def _assess_scene_complexity(self, image) -> float:
+        """Assess visual scene complexity for model selection"""
+        try:
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if len(image.shape) == 3 else image
             
             # Edge density (more edges = more complex)
@@ -218,227 +581,48 @@ SAFETY_ASSESSMENT: [Overall safety evaluation]"""
         except:
             return 0.5  # Default medium complexity
     
-    def _assess_audio_urgency(self, audio_description: str) -> float:
-        """Assess audio urgency for performance selection"""
-        urgency_keywords = {
-            "high": ["scream", "help", "emergency", "fire", "police", "stop", "hurt", "pain"],
-            "medium": ["loud", "shouting", "crying", "arguing", "angry", "upset"],
-            "low": ["talking", "quiet", "normal", "conversation", "music"]
-        }
-        
-        audio_lower = audio_description.lower()
-        
-        high_count = sum(1 for word in urgency_keywords["high"] if word in audio_lower)
-        medium_count = sum(1 for word in urgency_keywords["medium"] if word in audio_lower)
-        low_count = sum(1 for word in urgency_keywords["low"] if word in audio_lower)
-        
-        if high_count > 0:
-            return 0.9
-        elif medium_count > 0:
-            return 0.6
-        elif low_count > 0:
-            return 0.2
-        else:
-            return 0.4  # Unknown audio gets medium urgency
-    
-    def _check_system_resources(self) -> float:
-        """Check current system resource usage"""
-        try:
-            import psutil # pyright: ignore[reportMissingModuleSource]
-            cpu_percent = psutil.cpu_percent(interval=0.1)
-            memory_percent = psutil.virtual_memory().percent
-            
-            # Combine CPU and memory usage
-            resource_usage = (cpu_percent + memory_percent) / 200.0
-            return min(resource_usage, 1.0)
-            
-        except ImportError:
-            # Fallback if psutil not available
-            return 0.5
-    
-    def _analyze_visual_content(self, image, performance_level: PerformanceLevel) -> str:
+    def _analyze_visual_content(self, image) -> str:
         """Quick visual content analysis for prompt preparation"""
         try:
             height, width = image.shape[:2]
-            
-            # Basic image analysis
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if len(image.shape) == 3 else image
             brightness = np.mean(gray)
             
-            # Simple content detection
-            faces = self._detect_faces_basic(image)
-            
             description = f"Image: {width}x{height}, brightness: {brightness:.0f}/255"
-            
-            if faces > 0:
-                description += f", {faces} face(s) detected"
-            
-            if performance_level == "4b_full":
-                description += ", requesting detailed analysis"
-            
             return description
             
         except Exception as e:
             return f"Visual analysis error: {e}"
     
-    def _detect_faces_basic(self, image) -> int:
-        """Basic face detection for content analysis"""
-        try:
-            # Simple Haar cascade face detection
-            face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if len(image.shape) == 3 else image
-            faces = face_cascade.detectMultiScale(gray, 1.1, 4)
-            return len(faces)
-        except:
-            return 0
-    
-    def _analyze_audio_content(self, audio_description: str, performance_level: PerformanceLevel) -> str:
+    def _analyze_audio_content(self, audio_description: str) -> str:
         """Analyze audio content for prompt preparation"""
         if not audio_description:
             return "No audio data provided"
         
-        # Basic audio analysis
-        volume_indicators = ["loud", "quiet", "silent", "normal"]
-        emotion_indicators = ["angry", "scared", "calm", "excited", "distressed"]
-        
-        analysis = f"Audio description: {audio_description}"
-        
-        if performance_level == "4b_full":
-            analysis += " (detailed audio analysis requested)"
-        
-        return analysis
+        return f"Audio description: {audio_description}"
     
     def _create_multimodal_prompt(self, visual_analysis: str, audio_analysis: str, audio_description: str) -> str:
-        """Create comprehensive multimodal analysis prompt"""
-        base_prompt = self.prompts['multimodal_threat']
-        
-        context = f"""
-VISUAL_CONTEXT: {visual_analysis}
-AUDIO_CONTEXT: {audio_analysis}
-AUDIO_DESCRIPTION: {audio_description if audio_description else "No audio data"}
-
-Now analyze the provided image for threats, considering the audio context above.
-"""
-        
-        return base_prompt + "\n" + context
-    
-    def _query_model_with_image(self, prompt: str, image, performance_level: PerformanceLevel) -> Optional[str]:
-        """Query Gemma 3n with image and performance optimization"""
-        try:
-            # Convert image to base64
-            image_b64 = self._image_to_base64(image)
-            
-            # Performance-based settings
-            performance_settings = self._get_performance_settings(performance_level)
-            
-            query_data = {
-                'model': self.model,
-                'prompt': prompt,
-                'images': [image_b64],
-                'stream': False,
-                'options': performance_settings
-            }
-            
-            print(f"🔍 Sending multimodal query with {performance_level} settings...")
-            
-            timeout = 30 if performance_level == "2b_efficient" else 60
-            
-            response = requests.post(
-                f"{self.ollama_url}/api/generate",
-                json=query_data,
-                timeout=timeout
-            )
-            
-            if response.status_code == 200:
-                result = response.json()
-                ai_response = result.get('response', '').strip()
-                print(f"✅ Response received: {len(ai_response)} characters")
-                return ai_response
-            else:
-                print(f"❌ Query failed: HTTP {response.status_code}")
-                return None
-                
-        except Exception as e:
-            print(f"❌ Model query error: {e}")
-            return None
-    
-    def _query_model(self, prompt: str, performance_level: PerformanceLevel) -> Optional[str]:
-        """Query model for text-only analysis"""
-        try:
-            performance_settings = self._get_performance_settings(performance_level)
-            
-            query_data = {
-                'model': self.model,
-                'prompt': prompt,
-                'stream': False,
-                'options': performance_settings
-            }
-            
-            response = requests.post(
-                f"{self.ollama_url}/api/generate",
-                json=query_data,
-                timeout=30
-            )
-            
-            if response.status_code == 200:
-                result = response.json()
-                return result.get('response', '').strip()
-            
-            return None
-            
-        except Exception as e:
-            print(f"❌ Text query error: {e}")
-            return None
-    
-    def _get_performance_settings(self, performance_level: PerformanceLevel) -> Dict[str, Any]:
-        """Get optimized settings for different performance levels"""
-        settings_map = {
-            "2b_efficient": {
-                "temperature": 0.1,
-                "top_p": 0.8,
-                "num_predict": 200,
-                # Simulated 2B performance settings
-                "repeat_penalty": 1.1,
-                "num_ctx": 2048
-            },
-            "3b_balanced": {
-                "temperature": 0.2,
-                "top_p": 0.9,
-                "num_predict": 300,
-                # Balanced performance
-                "repeat_penalty": 1.05,
-                "num_ctx": 4096
-            },
-            "4b_full": {
-                "temperature": 0.1,
-                "top_p": 0.95,
-                "num_predict": 500,
-                # Maximum accuracy settings
-                "repeat_penalty": 1.0,
-                "num_ctx": 8192
-            }
-        }
-        
-        return settings_map.get(performance_level, settings_map["3b_balanced"])
+        """Create multimodal analysis prompt"""
+        return self.prompts['fallback_analysis'].format(
+            visual_analysis=visual_analysis,
+            audio_analysis=audio_analysis
+        )
     
     def _image_to_base64(self, image) -> str:
-        """Convert OpenCV image to base64 for AI analysis"""
+        """Convert OpenCV image to base64"""
         try:
-            # Optimize image size based on performance level
             height, width = image.shape[:2]
-            if width > 1024:  # Resize for efficiency
+            if width > 1024:
                 scale = 1024 / width
                 new_width = 1024
                 new_height = int(height * scale)
                 image = cv2.resize(image, (new_width, new_height))
             
-            # Convert to RGB
             if len(image.shape) == 3:
                 image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             else:
                 image_rgb = image
             
-            # Encode as JPEG
             _, buffer = cv2.imencode('.jpg', image_rgb, [cv2.IMWRITE_JPEG_QUALITY, 90])
             image_b64 = base64.b64encode(buffer).decode('utf-8')
             
@@ -448,140 +632,91 @@ Now analyze the provided image for threats, considering the audio context above.
             print(f"❌ Image encoding error: {e}")
             return ""
     
-    def _parse_threat_response(self, ai_response: str, performance_level: PerformanceLevel) -> Dict[str, Any]:
-        """Parse AI response into structured threat assessment"""
-        try:
-            result = {
-                'threat_detected': False,
-                'confidence': 0.0,
-                'threat_type': 'Unknown',
-                'visual_analysis': 'No analysis available',
-                'audio_analysis': 'No analysis available',
-                'reasoning': 'No reasoning provided',
-                'urgency': 'Low',
-                'performance_level': performance_level,
-                'timestamp': datetime.now().isoformat(),
-                'raw_response': ai_response
-            }
-            
-            if not ai_response:
-                return result
-            
-            # Parse structured response
-            lines = ai_response.split('\n')
-            
-            for line in lines:
-                line = line.strip()
-                
-                if line.startswith('THREAT:'):
-                    threat_value = line.split(':', 1)[1].strip().upper()
-                    result['threat_detected'] = threat_value == 'YES'
-                
-                elif line.startswith('CONFIDENCE:'):
-                    try:
-                        confidence_str = line.split(':', 1)[1].strip()
-                        result['confidence'] = float(confidence_str)
-                    except ValueError:
-                        result['confidence'] = 0.5
-                
-                elif line.startswith('TYPE:'):
-                    result['threat_type'] = line.split(':', 1)[1].strip()
-                
-                elif line.startswith('VISUAL_ANALYSIS:'):
-                    result['visual_analysis'] = line.split(':', 1)[1].strip()
-                
-                elif line.startswith('AUDIO_ANALYSIS:'):
-                    result['audio_analysis'] = line.split(':', 1)[1].strip()
-                
-                elif line.startswith('REASONING:'):
-                    result['reasoning'] = line.split(':', 1)[1].strip()
-                
-                elif line.startswith('URGENCY:'):
-                    result['urgency'] = line.split(':', 1)[1].strip()
-            
+    def _parse_threat_response(self, ai_response: str) -> Dict[str, Any]:
+        """Parse standard threat response"""
+        result = {
+            'threat_detected': False,
+            'confidence': 0.0,
+            'threat_type': 'Unknown',
+            'reasoning': 'No reasoning provided',
+            'urgency': 'Low',
+            'timestamp': datetime.now().isoformat(),
+            'raw_response': ai_response
+        }
+        
+        if not ai_response:
             return result
+        
+        lines = ai_response.split('\n')
+        for line in lines:
+            line = line.strip()
             
-        except Exception as e:
-            print(f"❌ Response parsing error: {e}")
-            return self._create_error_response(f"Parsing error: {e}")
+            if line.startswith('THREAT:'):
+                threat_value = line.split(':', 1)[1].strip().upper()
+                result['threat_detected'] = threat_value == 'YES'
+            
+            elif line.startswith('CONFIDENCE:'):
+                try:
+                    confidence_str = line.split(':', 1)[1].strip()
+                    result['confidence'] = float(confidence_str)
+                except ValueError:
+                    result['confidence'] = 0.5
+            
+            elif line.startswith('TYPE:'):
+                result['threat_type'] = line.split(':', 1)[1].strip()
+            
+            elif line.startswith('REASONING:'):
+                result['reasoning'] = line.split(':', 1)[1].strip()
+            
+            elif line.startswith('URGENCY:'):
+                result['urgency'] = line.split(':', 1)[1].strip()
+        
+        return result
+    
+    def _get_performance_settings(self, performance_level: str) -> Dict[str, Any]:
+        """Get performance settings"""
+        settings_map = {
+            "2b_efficient": {
+                "temperature": 0.1,
+                "top_p": 0.8,
+                "num_predict": 200,
+                "num_ctx": 2048
+            },
+            "3b_balanced": {
+                "temperature": 0.2,
+                "top_p": 0.9,
+                "num_predict": 300,
+                "num_ctx": 4096
+            },
+            "4b_full": {
+                "temperature": 0.1,
+                "top_p": 0.95,
+                "num_predict": 500,
+                "num_ctx": 8192
+            }
+        }
+        
+        return settings_map.get(performance_level, settings_map["3b_balanced"])
     
     def _create_error_response(self, error_message: str) -> Dict[str, Any]:
-        """Create error response structure"""
+        """Create error response"""
         return {
             'threat_detected': False,
             'confidence': 0.0,
             'threat_type': 'Analysis Error',
-            'visual_analysis': 'Error occurred',
-            'audio_analysis': 'Error occurred',
             'reasoning': error_message,
             'urgency': 'Low',
-            'performance_level': 'unknown',
             'timestamp': datetime.now().isoformat(),
             'error': True
         }
-    
-    def _update_performance_metrics(self, response_time: float, result: Dict[str, Any]):
-        """Update performance tracking metrics"""
-        try:
-            # Update response time average
-            total_analyses = self.performance_stats["total_analyses"]
-            current_avg = self.performance_stats["avg_response_time"]
-            
-            new_avg = ((current_avg * (total_analyses - 1)) + response_time) / total_analyses
-            self.performance_stats["avg_response_time"] = new_avg
-            
-            # Track threat detection
-            if result.get('threat_detected', False):
-                self.performance_stats["threats_detected"] += 1
-            
-            # Track resource usage
-            self.performance_stats["resource_usage"].append({
-                "timestamp": datetime.now().isoformat(),
-                "response_time": response_time,
-                "performance_level": result.get('performance_level', 'unknown')
-            })
-            
-            # Keep only last 100 resource measurements
-            if len(self.performance_stats["resource_usage"]) > 100:
-                self.performance_stats["resource_usage"].pop(0)
-                
-        except Exception as e:
-            print(f"⚠️ Metrics update error: {e}")
-    
-    def get_performance_stats(self) -> Dict[str, Any]:
-        """Get comprehensive performance statistics"""
-        stats = self.performance_stats.copy()
-        
-        # Add calculated metrics
-        total = stats["total_analyses"]
-        if total > 0:
-            stats["performance_distribution"] = {
-                "2b_efficient": (stats["2b_efficient_count"] / total) * 100,
-                "4b_full": (stats["4b_full_count"] / total) * 100,
-                "3b_balanced": (stats["3b_balanced_count"] / total) * 100
-            }
-            
-            stats["accuracy"] = (stats["threats_detected"] - stats["false_positives"]) / total if total > 0 else 0.0
-        
-        return stats
-    
-    def force_performance_level(self, level: PerformanceLevel):
-        """Force a specific performance level for testing"""
-        self._forced_performance = level
-        print(f"🔧 Performance level forced to: {level}")
-    
-    def reset_performance_forcing(self):
-        """Reset to automatic performance selection"""
-        self._forced_performance = None
-        print("🔧 Performance selection reset to automatic")
 
 
-# Test the dynamic AI engine
+# Test the Mix'n'Match AI engine
 if __name__ == "__main__":
     import sys
     from pathlib import Path
     
-    print("🤖 Testing Gemma 3n Dynamic AI Engine")
+    print("🤖 Testing Gemma 3n Mix'n'Match AI Engine")
     print("=" * 50)
     
     # Mock config for testing
@@ -589,20 +724,19 @@ if __name__ == "__main__":
         def get(self, key, default=None):
             return default
     
-    # Initialize engine
-    ai_engine = GemmaDynamicAI(MockConfig())
+    # Initialize Mix'n'Match engine
+    ai_engine = GemmaMixNMatchAI(MockConfig())
     
     if ai_engine.connection_status:
-        print("✅ AI Engine ready for competition")
+        print("✅ Mix'n'Match AI Engine ready for competition")
         
-        # Test performance level selection
-        print("\n🧪 Testing performance level selection...")
+        # Test Mix'n'Match scenarios
+        print("\n🧪 Testing Mix'n'Match scenarios...")
         
-        # Test with different scenarios
         test_scenarios = [
             ("Normal scene", "quiet background music"),
-            ("Complex scene", "loud shouting and arguing"),
-            ("Emergency scene", "screaming for help emergency")
+            ("Urgent audio", "help me please emergency"),
+            ("Complex scene", "multiple people arguing loudly")
         ]
         
         for scenario, audio in test_scenarios:
@@ -612,15 +746,32 @@ if __name__ == "__main__":
             # Mock image for testing
             test_image = np.zeros((480, 640, 3), dtype=np.uint8)
             
-            # Test auto performance selection
-            performance = ai_engine._auto_select_performance(test_image, audio)
-            print(f"Selected performance: {performance}")
+            # Test Mix'n'Match analysis
+            result = ai_engine.analyze_multimodal_threat(
+                image=test_image, 
+                audio_description=audio, 
+                performance_level="mixnmatch"
+            )
+            
+            print(f"Analysis Path: {result.get('analysis_path', 'unknown')}")
+            print(f"Models Used: {result.get('models_used', [])}")
+            print(f"Total Time: {result.get('total_analysis_time', 0):.2f}s")
         
-        # Show performance stats
-        stats = ai_engine.get_performance_stats()
-        print(f"\n📊 Performance Stats: {stats}")
+        # Show Mix'n'Match stats
+        stats = ai_engine.get_mixnmatch_stats()
+        print(f"\n📊 Mix'n'Match Stats:")
+        for key, value in stats.items():
+            if key != 'model_performance':
+                print(f"  {key}: {value}")
+        
+        print(f"\n📈 Model Performance:")
+        for model, perf in stats['model_performance'].items():
+            print(f"  {model}: {perf['uses']} uses, {perf['avg_time']:.2f}s avg")
         
     else:
-        print("❌ AI Engine not ready - check Gemma 3n setup")
+        print("❌ Mix'n'Match AI Engine not ready - check model downloads")
+        print("💡 Download missing models with:")
+        print("   ollama pull gemma3n:2b")
+        print("   ollama pull gemma3n:e4b")
     
-    print("\n🛡️ Dynamic AI Engine test complete")
+    print("\n🛡️ Mix'n'Match AI Engine test complete")
